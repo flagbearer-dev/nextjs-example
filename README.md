@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Feature flags in Next.js with Flagbearer
 
-## Getting Started
+A small Next.js app with one feature flag from
+[Flagbearer](https://flagbearer.dev). The cart page shows the current checkout
+until you turn on the `new-checkout` flag. Then it switches to a one-step
+checkout within seconds, with no redeploy and no reload.
 
-First, run the development server:
+## Run it
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. [Sign up for Flagbearer](https://flagbearer.dev). The free plan covers this
+   example.
+2. Create an application, then a flag with the key `new-checkout`.
+3. Copy the client key for your development environment. It starts with `fbc_`.
+4. Add the key and start the app:
+
+   ```sh
+   cp .env.example .env.local   # then paste your client key into .env.local
+   npm install
+   npm run dev
+   ```
+
+5. Open [localhost:3000](http://localhost:3000). You'll see the three-step
+   checkout.
+6. Turn `new-checkout` on for everyone in the Flagbearer dashboard. The page
+   switches to the one-step checkout.
+
+## How it works
+
+- [`app/flags.ts`](app/flags.ts) creates one Flagbearer client for the whole
+  app and has two small hooks: `useFlag` reads a flag, and `useFlagsLoaded`
+  says whether the visitor's flags have arrived.
+- [`app/checkout.tsx`](app/checkout.tsx) is a client component that checks the
+  flag once, where the old and new checkout part ways:
+
+  ```tsx
+  const loaded = useFlagsLoaded();
+  const newCheckout = useFlag("new-checkout", false);
+
+  if (!loaded) return <p>Loading checkout…</p>;
+  return newCheckout ? <OneStepCheckout /> : <ClassicCheckout />;
+  ```
+
+  The default is `false`, so the app keeps today's checkout if the flag doesn't
+  exist or can't load.
+
+- [`app/page.tsx`](app/page.tsx) is a server component. During server rendering
+  the hooks return the default, so there are no hydration mismatches.
+
+## Let your coding agent do it
+
+Flagbearer has an [MCP server](https://docs.flagbearer.dev/sdks/mcp), so an
+agent like Claude Code can create the flag, turn it on and write the check:
+
+```sh
+claude mcp add --transport http flagbearer https://mcp.flagbearer.dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then ask it to "put the new checkout behind a flag".
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Next steps
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- [React guide](https://docs.flagbearer.dev/sdks/react): signed-in users and
+  avoiding a flash of the wrong UI.
+- [Node SDK](https://docs.flagbearer.dev/sdks/node): check flags on the server,
+  for anything about access, pricing or data.
+- [Writing flag code](https://docs.flagbearer.dev/sdks/flag-code): rules for
+  flags that are safe to ship and quick to remove.
 
-## Learn More
+## License
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
